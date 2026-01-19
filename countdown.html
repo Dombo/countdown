@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Embeddable Countdown</title>
+  <link rel="stylesheet" href="widget.css" />
+</head>
+<body>
+  <!--
+    This page is intended to be used as an embeddable iframe target.
+    You can pass options via query params:
+      ?target=2026-12-31T23:59:59Z
+      &title=Happy%20New%20Year
+      &expiredMessage=Time%20is%20up!
+    Example:
+      <iframe src="https://yourhost/countdown.html?target=2026-12-31T23:59:59Z&title=Launch" ...>
+  -->
+  <main class="page">
+    <div id="demo-wrap">
+      <div class="countdown-widget" id="countdown"
+           data-target=""
+           aria-label="Countdown timer"
+           role="region">
+        <h2 class="title" id="widget-title">Countdown</h2>
+
+        <div class="time-grid" aria-live="polite" aria-atomic="true">
+          <div class="time-segment">
+            <div class="value" data-value-days>0</div>
+            <div class="label">Days</div>
+          </div>
+          <div class="time-segment">
+            <div class="value" data-value-hours>0</div>
+            <div class="label">Hours</div>
+          </div>
+          <div class="time-segment">
+            <div class="value" data-value-minutes>0</div>
+            <div class="label">Minutes</div>
+          </div>
+          <div class="time-segment">
+            <div class="value" data-value-seconds>0</div>
+            <div class="label">Seconds</div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="expired" data-expired-message hidden>Time's up</div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <p class="small">
+          To embed: use an iframe pointing at this file and pass <code>target</code> as an ISO datetime in the URL (UTC recommended).
+        </p>
+        <p class="small example">
+          Example: <code>?target=2026-12-31T23:59:59Z&amp;title=New%20Year</code>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="widget.js"></script>
+  <script>
+    // Auto-initialize using query parameters (for iframe use)
+    (function () {
+      // parse query params
+      function param(name) {
+        const u = new URLSearchParams(location.search);
+        return u.get(name);
+      }
+      const targetParam = param('target');
+      const titleParam = param('title');
+      const expiredParam = param('expiredMessage');
+
+      const el = document.getElementById('countdown');
+      if (targetParam) el.dataset.target = targetParam;
+      if (titleParam) document.getElementById('widget-title').textContent = decodeURIComponent(titleParam);
+      if (expiredParam) document.querySelector('[data-expired-message]').textContent = decodeURIComponent(expiredParam);
+
+      // initialize widget (widget.js exposes createCountdown and auto-inits elements with class)
+      if (window.createCountdown) {
+        // manual call also works; createCountdown will ignore if already auto-init'd
+        window.createCountdown(el);
+      }
+    })();
+  </script>
+</body>
+</html>
