@@ -11,8 +11,10 @@
     This page is intended to be used as an embeddable iframe target.
     You can pass options via query params:
       ?target=HH:MM:SS  (UTC time, e.g. 14:30:00 = 14:30 UTC for all viewers)
+      ?end=30m          (duration from now: 30m, 1h, 1h30m — redirects to ?target)
       &title=My%20Meeting
-    Example:
+    Examples:
+      <iframe src="https://yourhost/?end=30m&title=Standup" ...>
       <iframe src="https://yourhost/?target=14:30:00&title=Standup" ...>
   -->
   <main class="page">
@@ -49,10 +51,19 @@
         <details class="meta">
           <summary>How to embed</summary>
           <p class="small">
-            To embed: use a notion /embed and pass <code>target</code> as a UTC time (<code>HH:MM:SS</code>). All viewers count down to the same moment regardless of their timezone. After expiry the clock counts negative and flashes. Additional passive aggression will be added until meetings end on time.
+            Use <code>?target=HH:MM:SS</code> to set a fixed UTC deadline. All viewers count down to the same moment regardless of timezone — ideal for shared embeds.
+          </p>
+          <p class="small">
+            Use <code>?end=30m</code> (or <code>1h</code>, <code>1h30m</code>) to set a deadline relative to when the page first loads. This is ideal for Notion templates — embed it once and every copy of the template will start its own fresh countdown when opened, with no manual URL editing needed. The timer is locked in on first load, so refreshing won't reset it.
+          </p>
+          <p class="small">
+            After expiry the clock counts negative and flashes. Additional passive aggressive measures will be added until meetings end on time.
           </p>
           <p class="small example">
-            Example: <a id="example-link" href="#"><code id="example-text"></code></a>
+            Fixed time: <a id="example-link" href="#"><code id="example-text"></code></a>
+          </p>
+          <p class="small example">
+            Duration: <a id="example-end-link" href="#"><code id="example-end-text"></code></a>
           </p>
         </details>
       </div>
@@ -73,13 +84,22 @@
       const titleParam = param('title');
       const expiredParam = param('expiredMessage');
 
-      // No target → redirect to a +1hr example so the page is never blank
+      // Redirect to ?target if missing: resolve ?end=30m/1h/1h30m or fall back to +25min demo
       if (!targetParam) {
-        const t = new Date(Date.now() + 1500000);
+        const endParam = param('end');
+        const endMatch = endParam && endParam.match(/^(?:(\d+)h)?(?:(\d+)m)?$/i);
+        const ms = endMatch && (endMatch[1] || endMatch[2])
+          ? ((parseInt(endMatch[1] || 0) * 60) + parseInt(endMatch[2] || 0)) * 60000
+          : 1500000;
+        const t = new Date(Date.now() + ms);
         const hh = String(t.getUTCHours()).padStart(2, '0');
         const mm = String(t.getUTCMinutes()).padStart(2, '0');
         const ss = String(t.getUTCSeconds()).padStart(2, '0');
-        location.replace(location.pathname + '?target=' + hh + ':' + mm + ':' + ss + '&title=Meeting%20X');
+        const u = new URLSearchParams(location.search);
+        u.delete('end');
+        u.set('target', hh + ':' + mm + ':' + ss);
+        if (!endParam) u.set('title', 'Meeting X');
+        location.replace(location.pathname + '?' + u.toString());
         return;
       }
 
@@ -88,7 +108,7 @@
       if (titleParam) document.getElementById('widget-title').textContent = decodeURIComponent(titleParam);
       if (expiredParam) document.querySelector('[data-expired-message]').textContent = decodeURIComponent(expiredParam);
 
-      // Set example link to +1hr from now with a demo title
+      // Set example links
       const exampleLink = document.getElementById('example-link');
       const exampleText = document.getElementById('example-text');
       if (exampleLink) {
@@ -99,6 +119,13 @@
         const qs = '?target=' + hh + ':' + mm + ':' + ss + '&title=Meeting%20X';
         exampleLink.href = location.origin + location.pathname + qs;
         if (exampleText) exampleText.textContent = qs;
+      }
+      const exampleEndLink = document.getElementById('example-end-link');
+      const exampleEndText = document.getElementById('example-end-text');
+      if (exampleEndLink) {
+        const qs = '?end=30m&title=Meeting%20X';
+        exampleEndLink.href = location.origin + location.pathname + qs;
+        if (exampleEndText) exampleEndText.textContent = qs;
       }
 
       // initialize widget (widget.js exposes createCountdown and auto-inits elements with class)
