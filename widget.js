@@ -9,11 +9,11 @@
 
   function parseTarget(input) {
     if (!input) return null;
-    // Time-only HH:MM or HH:MM:SS → today at that UTC time
+    // Time-only HH:MM or HH:MM:SS → today at that time in the viewer's local timezone
     if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(input)) {
       const p = input.split(':').map(Number);
       const n = new Date();
-      return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), p[0], p[1], p[2] || 0));
+      return new Date(n.getFullYear(), n.getMonth(), n.getDate(), p[0], p[1], p[2] || 0);
     }
     // Numeric unix timestamp (seconds or ms)
     if (/^\d+$/.test(input)) {
