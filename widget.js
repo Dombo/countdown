@@ -48,12 +48,14 @@
     // Days always hidden (time-only mode)
     if (daysEl) daysEl.closest('.time-segment').hidden = true;
 
-    // Hours: prefix with '-' when overdue; hide when counting down and zero
+    // Hours: only show when value > 0; prefix with '-' when overdue
+    const showHours = parts.hours > 0;
     if (hoursEl) {
       hoursEl.textContent = (parts.expired ? '-' : '') + formatNumber(parts.hours);
-      hoursEl.closest('.time-segment').hidden = !parts.expired && parts.hours === 0;
+      hoursEl.closest('.time-segment').hidden = !showHours;
     }
-    if (minutesEl) minutesEl.textContent = formatNumber(parts.minutes);
+    // Minutes: carry the '-' sign when hours are hidden and overdue
+    if (minutesEl) minutesEl.textContent = (parts.expired && !showHours ? '-' : '') + formatNumber(parts.minutes);
     if (secondsEl) secondsEl.textContent = formatNumber(parts.seconds);
 
     // Flash the time grid when overdue
