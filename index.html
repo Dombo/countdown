@@ -10,11 +10,10 @@
   <!--
     This page is intended to be used as an embeddable iframe target.
     You can pass options via query params:
-      ?target=2026-12-31T23:59:59Z
-      &title=Happy%20New%20Year
-      &expiredMessage=Time%20is%20up!
+      ?target=HH:MM:SS  (UTC time of day, e.g. 14:30:00)
+      &title=My%20Meeting
     Example:
-      <iframe src="https://yourhost/index.html?target=2026-12-31T23:59:59Z&title=Launch" ...>
+      <iframe src="https://yourhost/?target=14:30:00&title=Standup" ...>
   -->
   <main class="page">
     <div id="demo-wrap">
@@ -50,7 +49,7 @@
         <details class="meta">
           <summary>How to embed</summary>
           <p class="small">
-            To embed: use an iframe pointing at this file and pass <code>target</code> as an ISO datetime in the URL (UTC recommended).
+            To embed: use an iframe pointing at this file and pass <code>target</code> as a UTC time (<code>HH:MM:SS</code>). After expiry the clock counts negative and flashes.
           </p>
           <p class="small example">
             Example: <a id="example-link" href="#"><code id="example-text"></code></a>
@@ -83,8 +82,11 @@
       const exampleLink = document.getElementById('example-link');
       const exampleText = document.getElementById('example-text');
       if (exampleLink) {
-        const target = new Date(Date.now() + 3600000).toISOString();
-        const qs = '?target=' + target + '&title=Meeting%20X';
+        const t = new Date(Date.now() + 3600000);
+        const hh = String(t.getUTCHours()).padStart(2, '0');
+        const mm = String(t.getUTCMinutes()).padStart(2, '0');
+        const ss = String(t.getUTCSeconds()).padStart(2, '0');
+        const qs = '?target=' + hh + ':' + mm + ':' + ss + '&title=Meeting%20X';
         exampleLink.href = location.origin + location.pathname + qs;
         if (exampleText) exampleText.textContent = qs;
       }

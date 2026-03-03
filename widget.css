@@ -151,6 +151,12 @@ details[open].meta summary::after { content: ' ▴'; }
 .example a { color: var(--accent); text-decoration: none; }
 .example a:hover { text-decoration: underline; }
 
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+.time-grid.flashing { animation: flash 1s ease-in-out infinite; }
+
 .attribution {
   position: fixed;
   bottom: 12px;

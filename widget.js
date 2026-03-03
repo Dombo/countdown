@@ -1,21 +1,26 @@
 // Lightweight embeddable countdown widget
 // Usage (auto-init):
-//  - Add an element with class "countdown-widget" and attribute data-target (ISO datetime or timestamp).
-//  - Optionally set data-expired-message and include a child with [data-expired-message] to show message.
-//  - Alternatively, call createCountdown(element, { target: Date|string, title: string, onExpire: fn }).
+//  - Add an element with class "countdown-widget" and attribute data-target (HH:MM:SS UTC time).
+//  - Alternatively, call createCountdown(element, { target: string, title: string, onExpire: fn }).
+//  - After expiry the clock counts negative and flashes until stopped.
 
 (function (global) {
   'use strict';
 
   function parseTarget(input) {
     if (!input) return null;
-    // If it's a numeric timestamp (seconds or ms), handle it
+    // Time-only HH:MM or HH:MM:SS → today at that UTC time
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(input)) {
+      const p = input.split(':').map(Number);
+      const n = new Date();
+      return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), p[0], p[1], p[2] || 0));
+    }
+    // Numeric unix timestamp (seconds or ms)
     if (/^\d+$/.test(input)) {
       const n = Number(input);
-      // decide if seconds (10-digit) or ms
       return new Date(n < 1e12 ? n * 1000 : n);
     }
-    // try ISO parse
+    // ISO fallback
     const d = new Date(input);
     if (!isNaN(d)) return d;
     return null;
@@ -26,36 +31,38 @@
   }
 
   function computeParts(diffMs) {
-    if (diffMs <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
-    let s = Math.floor(diffMs / 1000);
-    const days = Math.floor(s / 86400); s -= days * 86400;
-    const hours = Math.floor(s / 3600); s -= hours * 3600;
-    const minutes = Math.floor(s / 60); s -= minutes * 60;
-    const seconds = s;
-    return { days, hours, minutes, seconds, expired: false };
+    const expired = diffMs < 0;
+    let s = Math.floor(Math.abs(diffMs) / 1000);
+    const days  = Math.floor(s / 86400); s -= days  * 86400;
+    const hours = Math.floor(s / 3600);  s -= hours * 3600;
+    const mins  = Math.floor(s / 60);    s -= mins  * 60;
+    return { days, hours, minutes: mins, seconds: s, expired };
   }
 
   function updateDisplay(root, parts) {
-    const daysEl = root.querySelector('[data-value-days]');
-    const hoursEl = root.querySelector('[data-value-hours]');
+    const daysEl    = root.querySelector('[data-value-days]');
+    const hoursEl   = root.querySelector('[data-value-hours]');
     const minutesEl = root.querySelector('[data-value-minutes]');
     const secondsEl = root.querySelector('[data-value-seconds]');
-    if (daysEl) daysEl.textContent = String(parts.days);
-    if (hoursEl) hoursEl.textContent = formatNumber(parts.hours);
+
+    // Days always hidden (time-only mode)
+    if (daysEl) daysEl.closest('.time-segment').hidden = true;
+
+    // Hours: prefix with '-' when overdue; hide when counting down and zero
+    if (hoursEl) {
+      hoursEl.textContent = (parts.expired ? '-' : '') + formatNumber(parts.hours);
+      hoursEl.closest('.time-segment').hidden = !parts.expired && parts.hours === 0;
+    }
     if (minutesEl) minutesEl.textContent = formatNumber(parts.minutes);
     if (secondsEl) secondsEl.textContent = formatNumber(parts.seconds);
 
-    if (daysEl) daysEl.closest('.time-segment').hidden = parts.days === 0;
-    if (hoursEl) hoursEl.closest('.time-segment').hidden = parts.days === 0 && parts.hours === 0;
+    // Flash the time grid when overdue
+    const grid = root.querySelector('.time-grid');
+    if (grid) grid.classList.toggle('flashing', parts.expired);
 
+    // Expired message suppressed — negative count is the indicator
     const expiredEl = root.querySelector('[data-expired-message]');
-    if (parts.expired) {
-      if (expiredEl) expiredEl.hidden = false;
-      root.classList.add('expired');
-    } else {
-      if (expiredEl) expiredEl.hidden = true;
-      root.classList.remove('expired');
-    }
+    if (expiredEl) expiredEl.hidden = true;
   }
 
   function Countdown(root, opts) {
@@ -63,42 +70,28 @@
     opts = opts || {};
     this.onExpire = opts.onExpire || null;
 
-    // target from opts, data attribute, or attribute
     const dataTarget = root.getAttribute('data-target') || root.dataset.target || opts.target || '';
     this.target = parseTarget(dataTarget) || (opts.target ? parseTarget(opts.target) : null);
 
-    // expired message
-    const expiredMsg = opts.expiredMessage || root.dataset.expiredMessage || null;
-    if (expiredMsg) {
-      const el = root.querySelector('[data-expired-message]');
-      if (el) el.textContent = expiredMsg;
-    }
-
-    // keep timer id
     this._timer = null;
     this._lastParts = null;
+    this._expireFired = false;
   }
 
   Countdown.prototype.start = function () {
-    if (!this.target) {
-      // if no explicit target, try to read a timestamp text in the widget
-      // otherwise, do nothing
-      return;
-    }
+    if (!this.target) return;
     this.stop();
     const self = this;
     function tick() {
-      const now = new Date();
-      const diff = self.target - now;
+      const diff = self.target - new Date();
       const parts = computeParts(diff);
-      // update only when changed (reduce DOM thrash)
       const s = JSON.stringify(parts);
       if (s !== self._lastParts) {
         updateDisplay(self.root, parts);
         self._lastParts = s;
       }
-      if (parts.expired) {
-        self.stop();
+      if (parts.expired && !self._expireFired) {
+        self._expireFired = true;
         if (typeof self.onExpire === 'function') self.onExpire();
       }
     }
@@ -117,14 +110,13 @@
     const parsed = parseTarget(t);
     if (!parsed) return false;
     this.target = parsed;
+    this._expireFired = false;
     this.start();
     return true;
   };
 
-  // createCountdown: convenience factory
   function createCountdown(root, options) {
     if (!root) return null;
-    // if already initialized, return existing instance
     if (root.__countdownInstance) return root.__countdownInstance;
     const inst = new Countdown(root, options || {});
     root.__countdownInstance = inst;
@@ -132,14 +124,9 @@
     return inst;
   }
 
-  // Auto-initialize all elements with class 'countdown-widget' on DOMContentLoaded
   function autoInitAll() {
-    const els = document.querySelectorAll('.countdown-widget');
-    els.forEach(function (el) {
-      // Only init if not already
-      if (!el.__countdownInstance) {
-        createCountdown(el);
-      }
+    document.querySelectorAll('.countdown-widget').forEach(function (el) {
+      if (!el.__countdownInstance) createCountdown(el);
     });
   }
 
@@ -149,10 +136,7 @@
     setTimeout(autoInitAll, 0);
   }
 
-  // API export
   global.createCountdown = createCountdown;
-  global.CountdownWidget = {
-    parseTarget: parseTarget
-  };
+  global.CountdownWidget = { parseTarget: parseTarget };
 
 })(window);
