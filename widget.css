@@ -148,6 +148,8 @@ details[open].meta summary::after { content: ' ▴'; }
 
 .small { margin:0 0 8px 0; }
 .example { background: var(--example-bg); padding:8px; border-radius:8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:.85rem; color: var(--example-text); }
+.example a { color: var(--accent); text-decoration: none; }
+.example a:hover { text-decoration: underline; }
 
 /* Responsive adjustments */
 @media (max-width: 880px) {
