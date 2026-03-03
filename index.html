@@ -10,11 +10,10 @@
   <!--
     This page is intended to be used as an embeddable iframe target.
     You can pass options via query params:
-      ?target=2026-12-31T23:59:59Z
-      &title=Happy%20New%20Year
-      &expiredMessage=Time%20is%20up!
+      ?target=HH:MM:SS  (UTC time, e.g. 14:30:00 = 14:30 UTC for all viewers)
+      &title=My%20Meeting
     Example:
-      <iframe src="https://yourhost/countdown.html?target=2026-12-31T23:59:59Z&title=Launch" ...>
+      <iframe src="https://yourhost/?target=14:30:00&title=Standup" ...>
   -->
   <main class="page">
     <div id="demo-wrap">
@@ -46,18 +45,20 @@
         <div class="footer">
           <div class="expired" data-expired-message hidden>Time's up</div>
         </div>
-      </div>
 
-      <div class="meta">
-        <p class="small">
-          To embed: use an iframe pointing at this file and pass <code>target</code> as an ISO datetime in the URL (UTC recommended).
-        </p>
-        <p class="small example">
-          Example: <code>?target=2026-12-31T23:59:59Z&amp;title=New%20Year</code>
-        </p>
+        <details class="meta">
+          <summary>How to embed</summary>
+          <p class="small">
+            To embed: use a notion /embed and pass <code>target</code> as a UTC time (<code>HH:MM:SS</code>). All viewers count down to the same moment regardless of their timezone. After expiry the clock counts negative and flashes. Additional passive aggression will be added until meetings end on time.
+          </p>
+          <p class="small example">
+            Example: <a id="example-link" href="#"><code id="example-text"></code></a>
+          </p>
+        </details>
       </div>
     </div>
   </main>
+  <footer class="attribution">made with pseudo passive aggressive ❤️ by Dombo (and upstream)</footer>
 
   <script src="widget.js"></script>
   <script>
@@ -72,10 +73,33 @@
       const titleParam = param('title');
       const expiredParam = param('expiredMessage');
 
+      // No target → redirect to a +1hr example so the page is never blank
+      if (!targetParam) {
+        const t = new Date(Date.now() + 1500000);
+        const hh = String(t.getUTCHours()).padStart(2, '0');
+        const mm = String(t.getUTCMinutes()).padStart(2, '0');
+        const ss = String(t.getUTCSeconds()).padStart(2, '0');
+        location.replace(location.pathname + '?target=' + hh + ':' + mm + ':' + ss + '&title=Meeting%20X');
+        return;
+      }
+
       const el = document.getElementById('countdown');
       if (targetParam) el.dataset.target = targetParam;
       if (titleParam) document.getElementById('widget-title').textContent = decodeURIComponent(titleParam);
       if (expiredParam) document.querySelector('[data-expired-message]').textContent = decodeURIComponent(expiredParam);
+
+      // Set example link to +1hr from now with a demo title
+      const exampleLink = document.getElementById('example-link');
+      const exampleText = document.getElementById('example-text');
+      if (exampleLink) {
+        const t = new Date(Date.now() + 1500000);
+        const hh = String(t.getUTCHours()).padStart(2, '0');
+        const mm = String(t.getUTCMinutes()).padStart(2, '0');
+        const ss = String(t.getUTCSeconds()).padStart(2, '0');
+        const qs = '?target=' + hh + ':' + mm + ':' + ss + '&title=Meeting%20X';
+        exampleLink.href = location.origin + location.pathname + qs;
+        if (exampleText) exampleText.textContent = qs;
+      }
 
       // initialize widget (widget.js exposes createCountdown and auto-inits elements with class)
       if (window.createCountdown) {
