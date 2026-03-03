@@ -151,6 +151,16 @@ details[open].meta summary::after { content: ' ▴'; }
 .example a { color: var(--accent); text-decoration: none; }
 .example a:hover { text-decoration: underline; }
 
+.attribution {
+  position: fixed;
+  bottom: 12px;
+  width: 100%;
+  text-align: center;
+  font-size: .75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
 /* Responsive adjustments */
 @media (max-width: 880px) {
   .time-segment { min-height:76px; padding:10px; }
