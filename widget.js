@@ -45,6 +45,9 @@
     if (minutesEl) minutesEl.textContent = formatNumber(parts.minutes);
     if (secondsEl) secondsEl.textContent = formatNumber(parts.seconds);
 
+    if (daysEl) daysEl.closest('.time-segment').hidden = parts.days === 0;
+    if (hoursEl) hoursEl.closest('.time-segment').hidden = parts.days === 0 && parts.hours === 0;
+
     const expiredEl = root.querySelector('[data-expired-message]');
     if (parts.expired) {
       if (expiredEl) expiredEl.hidden = false;
