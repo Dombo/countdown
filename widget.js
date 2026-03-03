@@ -58,9 +58,8 @@
     if (minutesEl) minutesEl.textContent = (parts.expired && !showHours ? '-' : '') + formatNumber(parts.minutes);
     if (secondsEl) secondsEl.textContent = formatNumber(parts.seconds);
 
-    // Flash the time grid when overdue
-    const grid = root.querySelector('.time-grid');
-    if (grid) grid.classList.toggle('flashing', parts.expired);
+    // Siren flash the whole card when overdue
+    root.classList.toggle('flashing', parts.expired);
 
     // Expired message suppressed — negative count is the indicator
     const expiredEl = root.querySelector('[data-expired-message]');
