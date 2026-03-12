@@ -107,33 +107,38 @@
       const titleParam = param('title');
       const expiredParam = param('expiredMessage');
 
-      // Redirect to ?target if missing: resolve ?end=30m/1h/1h30m or fall back to +25min demo
+      let resolvedTarget = targetParam;
+
       if (!targetParam) {
         const endParam = param('end');
         const endMatch = endParam && endParam.match(/^(?:(\d+)h)?(?:(\d+)m)?$/i);
         const ms = endMatch && (endMatch[1] || endMatch[2])
           ? ((parseInt(endMatch[1] || 0) * 60) + parseInt(endMatch[2] || 0)) * 60000
           : 1500000;
-        // When ?end= is used, align to the next UTC interval boundary by default.
-        // Pass &align=0 to disable (e.g. 18:05 + 30m → 18:35 instead of 18:30).
+        const aligned = endParam && param('align') !== '0';
         const now = Date.now();
-        const targetMs = (endParam && param('align') !== '0')
-          ? Math.floor(now / ms + 1) * ms
-          : now + ms;
+        const targetMs = (aligned) ? Math.floor(now / ms + 1) * ms : now + ms;
         const t = new Date(targetMs);
         const hh = String(t.getUTCHours()).padStart(2, '0');
         const mm = String(t.getUTCMinutes()).padStart(2, '0');
         const ss = String(t.getUTCSeconds()).padStart(2, '0');
-        const u = new URLSearchParams(location.search);
-        u.delete('end');
-        u.set('target', hh + ':' + mm + ':' + ss);
-        if (!endParam) u.set('title', 'Meeting X');
-        location.replace(location.pathname + '?' + u.toString());
-        return;
+
+        if (aligned) {
+          // No redirect — recompute on every load so all viewers share the same boundary
+          resolvedTarget = hh + ':' + mm + ':' + ss;
+        } else {
+          // Redirect to lock in the time for this opener (raw offset or demo fallback)
+          const u = new URLSearchParams(location.search);
+          u.delete('end');
+          u.set('target', hh + ':' + mm + ':' + ss);
+          if (!endParam) u.set('title', 'Meeting X');
+          location.replace(location.pathname + '?' + u.toString());
+          return;
+        }
       }
 
       const el = document.getElementById('countdown');
-      if (targetParam) el.dataset.target = targetParam;
+      if (resolvedTarget) el.dataset.target = resolvedTarget;
       if (titleParam) document.getElementById('widget-title').textContent = decodeURIComponent(titleParam);
       if (expiredParam) document.querySelector('[data-expired-message]').textContent = decodeURIComponent(expiredParam);
 
