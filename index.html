@@ -48,22 +48,45 @@
           <div class="expired" data-expired-message hidden>Time's up</div>
         </div>
 
+        <button class="config-toggle" id="config-toggle" aria-label="Configure timer" title="Configure">⚙</button>
+
+        <div class="config-panel" id="config-panel" hidden>
+          <p class="config-heading">Configure timer</p>
+          <div class="config-presets">
+            <button class="preset" data-duration="15m">15m</button>
+            <button class="preset" data-duration="30m">30m</button>
+            <button class="preset" data-duration="45m">45m</button>
+            <button class="preset" data-duration="60m">60m</button>
+          </div>
+          <label class="config-align-label">
+            <input type="checkbox" id="config-align" checked />
+            Clock aligned
+          </label>
+
+          <div class="config-field">
+            <label for="config-title">Title</label>
+            <input id="config-title" type="text" placeholder="Meeting X" />
+          </div>
+          <div class="config-output">
+            <input id="config-url" type="text" readonly />
+            <button id="config-copy">Copy</button>
+            <button id="config-load">Load</button>
+          </div>
+        </div>
+
         <details class="meta">
           <summary>How to embed</summary>
           <p class="small">
-            Use <code>?target=HH:MM:SS</code> to set a fixed UTC deadline. All viewers count down to the same moment regardless of timezone — ideal for shared embeds.
-          </p>
-          <p class="small">
-            Use <code>?end=30m</code> (or <code>1h</code>, <code>1h30m</code>) to set a deadline relative to when the page first loads. This is ideal for Notion templates — embed it once and every copy of the template will start its own fresh countdown when opened, with no manual URL editing needed. The timer is locked in on first load, so refreshing won't reset it.
-          </p>
-          <p class="small">
-            After expiry the clock counts negative and flashes. Additional passive aggressive measures will be added until meetings end on time.
+            Use the ⚙ button to configure and copy an embed URL, or construct one manually:
           </p>
           <p class="small example">
-            Fixed time: <a id="example-link" href="#"><code id="example-text"></code></a>
+            Fixed: <a id="example-link" href="#"><code id="example-text"></code></a>
           </p>
           <p class="small example">
             Duration: <a id="example-end-link" href="#"><code id="example-end-text"></code></a>
+          </p>
+          <p class="small">
+            <code>?end=</code> counts down from when the page loads — great for Notion templates. Add <code>&amp;align</code> to snap to the next clock boundary (e.g. 18:05 + 30m → 18:30).
           </p>
         </details>
       </div>
@@ -91,7 +114,13 @@
         const ms = endMatch && (endMatch[1] || endMatch[2])
           ? ((parseInt(endMatch[1] || 0) * 60) + parseInt(endMatch[2] || 0)) * 60000
           : 1500000;
-        const t = new Date(Date.now() + ms);
+        // When ?end= is used, align to the next UTC interval boundary by default.
+        // Pass &align=0 to disable (e.g. 18:05 + 30m → 18:35 instead of 18:30).
+        const now = Date.now();
+        const targetMs = (endParam && param('align') !== '0')
+          ? Math.floor(now / ms + 1) * ms
+          : now + ms;
+        const t = new Date(targetMs);
         const hh = String(t.getUTCHours()).padStart(2, '0');
         const mm = String(t.getUTCMinutes()).padStart(2, '0');
         const ss = String(t.getUTCSeconds()).padStart(2, '0');
@@ -133,6 +162,61 @@
         // manual call also works; createCountdown will ignore if already auto-init'd
         window.createCountdown(el);
       }
+
+      // Config panel
+      const toggle = document.getElementById('config-toggle');
+      const panel = document.getElementById('config-panel');
+      let selectedDuration = '';
+      const titleInput = document.getElementById('config-title');
+      const urlOutput = document.getElementById('config-url');
+      const copyBtn = document.getElementById('config-copy');
+      const loadBtn = document.getElementById('config-load');
+
+      function updateConfigUrl() {
+        const u = new URLSearchParams();
+        const t = titleInput.value.trim();
+        if (selectedDuration) u.set('end', selectedDuration);
+        if (!document.getElementById('config-align').checked) u.set('align', '0');
+        if (t) u.set('title', t);
+        urlOutput.value = location.origin + location.pathname + (u.toString() ? '?' + u.toString() : '');
+      }
+
+      toggle.addEventListener('click', () => {
+        const opening = panel.hidden;
+        panel.hidden = !opening;
+        toggle.classList.toggle('active', opening);
+        if (opening) updateConfigUrl();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !panel.hidden) {
+          panel.hidden = true;
+          toggle.classList.remove('active');
+        }
+      });
+
+      document.querySelectorAll('.preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedDuration = btn.dataset.duration;
+          document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          updateConfigUrl();
+        });
+      });
+
+      titleInput.addEventListener('input', updateConfigUrl);
+      document.getElementById('config-align').addEventListener('change', updateConfigUrl);
+
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(urlOutput.value).then(() => {
+          copyBtn.textContent = 'Copied ✓';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+      });
+
+      loadBtn.addEventListener('click', () => {
+        location.href = urlOutput.value;
+      });
     })();
   </script>
 </body>
